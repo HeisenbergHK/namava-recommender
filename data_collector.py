@@ -1,78 +1,90 @@
-import csv
+"""If you want to run this script make sure to remove data.csv
+as it appends new data to the old file, not replacing it!"""
+
+import asyncio
 import os
 
-import requests
+import aiofiles
+import aiohttp
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "application/json",
 }
 
-# Creating a HTTP session
-session = requests.Session()
-session.headers.update(headers)
+
+async def get_detail(session, url, sem):
+    async with sem:
+        async with session.get(url) as response:
+            return await response.json()
 
 
-file_name = "data.csv"
-file_exist = os.path.exists(file_name)
+async def main():
+    print("Start to Collect data...")
+    ps = 30
+    pi = 1
+    sem = asyncio.Semaphore(30)
 
-ps = 30  # Max is 30
-pi = 1  # Starting index
+    file_name = "data.csv"
+    file_exist = os.path.exists(file_name)
 
-print("Start to Collect data...")
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with aiofiles.open(
+            file_name, "a", newline="", encoding="utf-8"
+        ) as async_file:
+            if not file_exist:
+                await async_file.write("series_id,series_name,hit,imdb\n")
 
-with open(file_name, "a", newline="", encoding="utf-8") as file:
-    writer = csv.writer(file)
+            while True:
+                url = f"https://www.namava.ir/api/v1.0/medias/latest-series?pi={pi}&ps={ps}"
 
-    if not file_exist:
-        writer.writerow(["series_id", "series_name", "hit", "imdb"])
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        break
 
-    while True:
-        url = f"https://www.namava.ir/api/v1.0/medias/latest-series?pi={pi}&ps={ps}"
+                    response_json = await response.json()
+                    result = response_json["result"]
+                    if not result:
+                        break
 
-        response = session.get(url)
-        if response.status_code == 200:
-            response = response.json()
+                    tasks = []
+                    meta = []
 
-            # If there is no more result this would be empty and the loop beaks
-            result = response["result"]
-            if result == []:
-                break
+                    for res in result:
+                        series_id = res["id"]
+                        series_name = res["caption"]
+                        url_for_rating = f"https://www.namava.ir/api/v1.0/medias/{series_id}/brief-preview"
 
-            for res in result:
+                        tasks.append(
+                            asyncio.create_task(
+                                get_detail(session, url_for_rating, sem)
+                            )
+                        )
+                        meta.append((series_id, series_name))
+
+                    responses = await asyncio.gather(*tasks)
+
+                    for (series_id, series_name), res in zip(meta, responses):
+                        hit = res["result"]["hit"]
+                        imdb = res["result"]["imdb"]
+                        await async_file.write(
+                            f"{series_id},{series_name},{hit},{imdb}\n"
+                        )
+
+                    # Forces Python to write everything in the buffer to disk immediately.
+                    await async_file.flush()
+
+                    # A brief moment before initiating new requests
+                    await asyncio.sleep(0.3)
+
                 # Logs in the terminal
-                series_name = res["caption"]
-                series_id = res["id"]
+                print(f"Data Collected for: {pi}")
+                print("-" * 12)
+                pi += 1
 
-                url_for_rating = (
-                    f"https://www.namava.ir/api/v1.0/medias/{series_id}/brief-preview"
-                )
+                if pi == 50:
+                    break
+    print("Start to Collect data...")
 
-                review_response = session.get(url_for_rating, headers=headers)
 
-                if review_response.status_code == 200:
-                    print(f"res: {res["id"]}")
-                    print("-" * 12)
-
-                    review_response = review_response.json()
-                    hit = review_response["result"]["hit"]
-                    imdb = review_response["result"]["imdb"]
-
-                    # Inserting a new record to the data.csv
-                    writer.writerow([series_id, series_name, hit, imdb])
-                else:
-                    print(f"Error {response.status_code} res: {res["id"]}")
-        else:
-            print(f"Error {response.status_code} for page {pi}")
-
-        # Logs in the terminal
-        print(f"Data Collected for: {pi}")
-        print("-" * 12)
-
-        pi += 1
-
-        if pi == 3:
-            break
-print("Start to Collect data...")
-
-# print(data)
+asyncio.run(main())
