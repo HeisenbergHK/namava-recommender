@@ -8,6 +8,11 @@ headers = {
     "Accept": "application/json",
 }
 
+# Creating a HTTP session
+session = requests.Session()
+session.headers.update(headers)
+
+
 file_name = "data.csv"
 file_exist = os.path.exists(file_name)
 
@@ -25,7 +30,7 @@ with open(file_name, "a", newline="", encoding="utf-8") as file:
     while True:
         url = f"https://www.namava.ir/api/v1.0/medias/latest-series?pi={pi}&ps={ps}"
 
-        response = requests.get(url, headers=headers)
+        response = session.get(url)
         if response.status_code == 200:
             response = response.json()
 
@@ -43,7 +48,7 @@ with open(file_name, "a", newline="", encoding="utf-8") as file:
                     f"https://www.namava.ir/api/v1.0/medias/{series_id}/brief-preview"
                 )
 
-                review_response = requests.get(url_for_rating, headers=headers)
+                review_response = session.get(url_for_rating, headers=headers)
 
                 if review_response.status_code == 200:
                     print(f"res: {res["id"]}")
