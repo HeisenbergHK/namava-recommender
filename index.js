@@ -1,8 +1,10 @@
 const resultList = document.getElementById("result-list");
 const inputField = document.getElementById("search-input");
 
+publicServerURL = "https://namava-recommender-production.up.railway.app/"
+
 async function fetchData(keyword) {
-  const url = `http://127.0.0.1:5000/api/v1/top_match?keyword=${keyword}`;
+  const url = `${publicServerURL}/api/v1/top_match?keyword=${keyword}`;
   const response = await fetch(url);
   const data = await response.json();
 
