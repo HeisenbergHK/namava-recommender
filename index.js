@@ -22,7 +22,11 @@ async function renderResults(keyword) {
   let resultHTML = "";
 
   for (let i = 0; i < data.length; i++) {
-    resultHTML += `<div class="result-item">${data[i].series_name}</div>`;
+    // resultHTML += `<div class="result-item">${data[i].series_name}</div>`;
+    resultHTML += `<div class="result-item">
+                    <img src="${data[i].series_image_url}" alt="${data[i].series_name}">
+                    <span>${data[i].series_name}</span>
+                  </div>`;
   }
 
   resultList.innerHTML = resultHTML;
@@ -31,10 +35,10 @@ async function renderResults(keyword) {
 }
 
 inputField.addEventListener("input", function () {
-  const keyword = inputField.value
+  const keyword = inputField.value;
   renderResults(keyword);
 });
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
   resultList.innerHTML = "";
-})
+});

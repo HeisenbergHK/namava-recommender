@@ -31,7 +31,7 @@ async def main():
             file_name, mode, newline="", encoding="utf-8"
         ) as async_file:
             # if not file_exist:
-            await async_file.write("series_id,series_name,hit,imdb\n")
+            await async_file.write("series_id,series_name,hit,imdb,series_image_url\n")
 
             while True:
                 url = f"https://www.namava.ir/api/v1.0/medias/latest-series?pi={pi}&ps={ps}"
@@ -51,6 +51,7 @@ async def main():
                     for res in result:
                         series_id = res["id"]
                         series_name = res["caption"]
+                        series_image_url = f"https://www.namava.ir{res["imageUrl"]}"
                         url_for_rating = f"https://www.namava.ir/api/v1.0/medias/{series_id}/brief-preview"
 
                         tasks.append(
@@ -58,15 +59,15 @@ async def main():
                                 get_detail(session, url_for_rating, sem)
                             )
                         )
-                        meta.append((series_id, series_name))
+                        meta.append((series_id, series_name, series_image_url))
 
                     responses = await asyncio.gather(*tasks)
 
-                    for (series_id, series_name), res in zip(meta, responses):
+                    for (series_id, series_name, series_image_url), res in zip(meta, responses):
                         hit = res["result"]["hit"]
                         imdb = res["result"]["imdb"]
                         await async_file.write(
-                            f"{series_id},{series_name},{hit},{imdb}\n"
+                            f"{series_id},{series_name},{hit},{imdb},{series_image_url}\n"
                         )
 
                     # Forces Python to write everything in the buffer to disk immediately.
