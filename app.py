@@ -1,8 +1,10 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from utils import search_top_5
 
 app = Flask(__name__)
+CORS(app)  # Allow all domains by default
 
 
 @app.route("/")
@@ -17,4 +19,4 @@ def return_top_matches():
         return {"error": "Missing 'keyword' parameter"}, 400  # Bad Request
 
     result = search_top_5(keyword)
-    return result
+    return jsonify(result)
